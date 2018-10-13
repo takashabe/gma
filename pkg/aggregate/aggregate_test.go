@@ -1,28 +1,28 @@
 package aggregate
 
-import "testing"
+import (
+	"testing"
 
-func TestParsePackageWithText(t *testing.T) {
+	"github.com/k0kubun/pp"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestParsePackage(t *testing.T) {
 	tests := []struct {
-		text string
+		names     []string
+		expectErr error
 	}{
-		{"foo"},
-		{"package main\nimport \"fmt\"\nfunc main() { fmt.Println(1) }"},
+		{[]string{"testdata/test.go"}, nil},
+		// {[]string{"testdata/test.go", "testdata/util.go"}, nil},
+		// {[]string{""}, errors.New("Not found correctly go files")},
 	}
 	for _, tt := range tests {
-		aggregator := Aggregator{}
-		names := []string{"foo.go", "foo.md"}
-		aggregator.parsePackage(names, tt.text)
-	}
-}
-
-func TestParsePackageWithFile(t *testing.T) {
-	tests := []struct {
-		names []string
-	}{
-		{[]string{""}},
-	}
-	for _, tt := range tests {
-		t.Errorf("not implements %v", tt.names)
+		aggregator := &Aggregator{}
+		p, err := aggregator.parseFiles(tt.names)
+		if err != nil {
+			assert.EqualError(t, err, tt.expectErr.Error())
+			continue
+		}
+		pp.Println(p)
 	}
 }

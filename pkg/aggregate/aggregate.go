@@ -5,17 +5,15 @@ import (
 	"go/parser"
 	"go/token"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
-// Aggregator provide
-type Aggregator struct{}
-
-type Package struct {
-	main *ast.File
-	subs []*ast.File
+// Aggregator provides aggregate solver
+type Aggregator struct {
 }
 
-func (a *Aggregator) parsePackage(names []string) error {
+func (Aggregator) parseFiles(names []string) ([]*ast.File, error) {
 	var astFiles []*ast.File
 
 	fs := token.NewFileSet()
@@ -25,9 +23,20 @@ func (a *Aggregator) parsePackage(names []string) error {
 		}
 		af, err := parser.ParseFile(fs, name, nil, parser.ParseComments)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		astFiles = append(astFiles, af)
 	}
-	return nil
+	if len(astFiles) == 0 {
+		return nil, errors.New("Not found correctly go files")
+	}
+	return astFiles, nil
+}
+
+func (Aggregator) walk(f *ast.File) {
+	ast.Inspect(f, func(n ast.Node) bool {
+		// TODO: Rename function when import another util packages.
+
+		// TODO: Detect implements Solver() struct.
+	})
 }
