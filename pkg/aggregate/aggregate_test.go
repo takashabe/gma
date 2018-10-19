@@ -3,7 +3,6 @@ package aggregate
 import (
 	"testing"
 
-	"github.com/k0kubun/pp"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,11 +17,47 @@ func TestParsePackage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		aggregator := &Aggregator{}
-		p, err := aggregator.parseFiles(tt.names)
+		_, err := aggregator.parsePackage(tt.names)
 		if err != nil {
 			assert.EqualError(t, err, tt.expectErr.Error())
 			continue
 		}
-		pp.Println(p)
+	}
+}
+
+func TestDetectSolver(t *testing.T) {
+	tests := []struct {
+		name  string
+		exist bool
+	}{
+		{"testdata/test.go", true},
+		{"testdata/util.go", false},
+	}
+	for _, tt := range tests {
+		a := &Aggregator{}
+		pkg, err := a.parsePackage([]string{tt.name})
+		assert.NoError(t, err)
+		assert.Len(t, pkg.files, 1)
+
+		a.main = pkg
+		_, ok := a.detectSolver()
+		assert.Equal(t, tt.exist, ok)
+	}
+}
+
+func TestReplaceUtilFuncs(t *testing.T) {
+	tests := []struct {
+		name  string
+		exist bool
+	}{
+		{"testdata/test.go", true},
+		{"testdata/util.go", false},
+		{"testdata/util2/util2.go", false},
+	}
+	for _, tt := range tests {
+		a := &Aggregator{}
+		pkg, err := a.parsePackage([]string{tt.name})
+		assert.NoError(t, err)
+		assert.Len(t, pkg.files, 1)
 	}
 }
