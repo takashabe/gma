@@ -1,10 +1,24 @@
 package aggregate
 
 import (
+	"bytes"
+	"fmt"
+	"go/printer"
+	"go/token"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
+
+func dummyAggregator(t *testing.T, f string) *Aggregator {
+	a := &Aggregator{}
+	pkg, err := a.parsePackage([]string{f})
+	assert.NoError(t, err)
+	assert.Len(t, pkg.files, 1)
+	a.main = pkg
+	return a
+}
 
 func TestParsePackage(t *testing.T) {
 	tests := []struct {
@@ -12,8 +26,8 @@ func TestParsePackage(t *testing.T) {
 		expectErr error
 	}{
 		{[]string{"testdata/test.go"}, nil},
-		// {[]string{"testdata/test.go", "testdata/util.go"}, nil},
-		// {[]string{""}, errors.New("Not found correctly go files")},
+		{[]string{"testdata/test.go", "testdata/util.go"}, nil},
+		{[]string{""}, errors.New("Not found correctly go files")},
 	}
 	for _, tt := range tests {
 		aggregator := &Aggregator{}
@@ -25,7 +39,7 @@ func TestParsePackage(t *testing.T) {
 	}
 }
 
-func TestDetectSolver(t *testing.T) {
+func TestGetSolverNode(t *testing.T) {
 	tests := []struct {
 		name  string
 		exist bool
@@ -34,30 +48,29 @@ func TestDetectSolver(t *testing.T) {
 		{"testdata/util.go", false},
 	}
 	for _, tt := range tests {
-		a := &Aggregator{}
-		pkg, err := a.parsePackage([]string{tt.name})
-		assert.NoError(t, err)
-		assert.Len(t, pkg.files, 1)
+		a := dummyAggregator(t, tt.name)
 
-		a.main = pkg
-		_, ok := a.detectSolver()
+		_, ok := a.getSolverNode()
 		assert.Equal(t, tt.exist, ok)
 	}
 }
 
-func TestReplaceUtilFuncs(t *testing.T) {
+func TestInjectMain(t *testing.T) {
 	tests := []struct {
-		name  string
-		exist bool
+		name string
 	}{
-		{"testdata/test.go", true},
-		{"testdata/util.go", false},
-		{"testdata/util2/util2.go", false},
+		{"testdata/test.go"},
 	}
 	for _, tt := range tests {
-		a := &Aggregator{}
-		pkg, err := a.parsePackage([]string{tt.name})
+		a := dummyAggregator(t, tt.name)
+		err := a.inejctMain()
 		assert.NoError(t, err)
-		assert.Len(t, pkg.files, 1)
+
+		var buf bytes.Buffer
+		p := printer.Config{Mode: printer.TabIndent, Tabwidth: 4}
+		p.Fprint(&buf, token.NewFileSet(), a.main.files[0])
+
+		// TODO: Compare expect code string. Probably use comparing with AST converted string.
+		fmt.Println(buf.String())
 	}
 }

@@ -1,6 +1,7 @@
 package aggregate
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -25,6 +26,7 @@ type Package struct {
 
 // Aggregate aggregate main and sub files.
 func (a Aggregator) Aggregate(mainFile string, subFiles []string) error {
+	// TODO: implements
 	return nil
 }
 
@@ -51,10 +53,9 @@ func (Aggregator) parsePackage(names []string) (*Package, error) {
 	}, nil
 }
 
-func (a Aggregator) detectSolver() (ast.Node, bool) {
-	var expr ast.Expr
+func (a Aggregator) getSolverNode() (*ast.Ident, bool) {
+	var ident *ast.Ident
 	ast.Inspect(a.main.files[0], func(n ast.Node) bool {
-		// TODO: Detect implements Solver() struct.
 		fd, ok := n.(*ast.FuncDecl)
 		if !ok {
 			return true
@@ -66,11 +67,45 @@ func (a Aggregator) detectSolver() (ast.Node, bool) {
 			return true
 		}
 
-		expr = fd.Recv.List[0].Type
+		// TODO: process otherwise
+		ex, ok := fd.Recv.List[0].Type.(*ast.StarExpr)
+		if !ok {
+			return true
+		}
+		id, ok := ex.X.(*ast.Ident)
+		if !ok {
+			return true
+		}
+
+		ident = id
 		a.main.name = fd.Name.Name
 		return false
 	})
-	return expr, expr != nil
+	return ident, ident != nil
+}
+
+func (a Aggregator) inejctMain() error {
+	node, ok := a.getSolverNode()
+	if !ok {
+		return errors.New("not exists Solver")
+	}
+	file, err := parser.ParseFile(token.NewFileSet(), "main", templateMain(node.Name), parser.Mode(0))
+	if err != nil {
+		return err
+	}
+
+	for _, d := range file.Decls {
+		fn, ok := d.(*ast.FuncDecl)
+		if ok {
+			a.main.files[0].Decls = append(a.main.files[0].Decls, fn)
+			return nil
+		}
+	}
+	return errors.New("failed to inject main method")
+}
+
+func templateMain(solver string) string {
+	return fmt.Sprintf("package main; func main() { s:=%s{};s.Solve() }", solver)
 }
 
 // TODO: Rename function when import another util packages.
