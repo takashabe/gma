@@ -53,8 +53,8 @@ func (Aggregator) parsePackage(names []string) (*Package, error) {
 	}, nil
 }
 
-func (a Aggregator) getSolverNode() (*ast.Ident, bool) {
-	var ident *ast.Ident
+func (a Aggregator) getSolverNode() (*ast.Object, bool) {
+	var obj *ast.Object
 	ast.Inspect(a.main.files[0], func(n ast.Node) bool {
 		fd, ok := n.(*ast.FuncDecl)
 		if !ok {
@@ -67,21 +67,23 @@ func (a Aggregator) getSolverNode() (*ast.Ident, bool) {
 			return true
 		}
 
-		// TODO: process otherwise
-		ex, ok := fd.Recv.List[0].Type.(*ast.StarExpr)
-		if !ok {
-			return true
-		}
-		id, ok := ex.X.(*ast.Ident)
-		if !ok {
+		switch t := fd.Recv.List[0].Type.(type) {
+		case *ast.StarExpr:
+			id, ok := t.X.(*ast.Ident)
+			if !ok {
+				return true
+			}
+			obj = id.Obj
+		case *ast.Ident:
+			obj = t.Obj
+		default:
 			return true
 		}
 
-		ident = id
 		a.main.name = fd.Name.Name
 		return false
 	})
-	return ident, ident != nil
+	return obj, obj != nil
 }
 
 func (a Aggregator) inejctMain() error {

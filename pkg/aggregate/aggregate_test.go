@@ -45,6 +45,7 @@ func TestGetSolverNode(t *testing.T) {
 		exist bool
 	}{
 		{"testdata/test.go", true},
+		{"testdata/test2.go", true},
 		{"testdata/util.go", false},
 	}
 	for _, tt := range tests {
