@@ -1,5 +1,16 @@
 package util2
 
-func Util2() error {
+import "fmt"
+
+func Foo() error {
+	bar()
 	return nil
+}
+
+func bar() {
+	fmt.Println("bar")
+}
+
+func foo() {
+	fmt.Println("foo")
 }

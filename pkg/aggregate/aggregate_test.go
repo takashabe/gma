@@ -1,10 +1,6 @@
 package aggregate
 
 import (
-	"bytes"
-	"fmt"
-	"go/printer"
-	"go/token"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -13,29 +9,30 @@ import (
 
 func dummyAggregator(t *testing.T, f string) *Aggregator {
 	a := &Aggregator{}
-	pkg, err := a.parsePackage([]string{f})
+	pkg, err := a.parsePackage(f)
 	assert.NoError(t, err)
-	assert.Len(t, pkg.files, 1)
 	a.main = pkg
 	return a
 }
 
 func TestParsePackage(t *testing.T) {
 	tests := []struct {
-		names     []string
-		expectErr error
+		name          string
+		expectPkgName string
+		expectErr     error
 	}{
-		{[]string{"testdata/test.go"}, nil},
-		{[]string{"testdata/test.go", "testdata/util.go"}, nil},
-		{[]string{""}, errors.New("Not found correctly go files")},
+		{"testdata/test.go", "solve", nil},
+		{"testdata/util2/util2.go", "util2", nil},
+		{"foo", "solve", errors.New("not exists .go file foo")},
 	}
 	for _, tt := range tests {
-		aggregator := &Aggregator{}
-		_, err := aggregator.parsePackage(tt.names)
+		a := &Aggregator{}
+		p, err := a.parsePackage(tt.name)
 		if err != nil {
 			assert.EqualError(t, err, tt.expectErr.Error())
 			continue
 		}
+		assert.Equal(t, tt.expectPkgName, p.name)
 	}
 }
 
@@ -58,20 +55,51 @@ func TestGetSolverNode(t *testing.T) {
 
 func TestInjectMain(t *testing.T) {
 	tests := []struct {
-		name string
+		name      string
+		expectErr error
 	}{
-		{"testdata/test.go"},
+		{"testdata/test.go", nil},
+		{"testdata/util.go", errors.New("not exists Solver")},
 	}
 	for _, tt := range tests {
 		a := dummyAggregator(t, tt.name)
 		err := a.inejctMain()
-		assert.NoError(t, err)
+		if tt.expectErr == nil {
+			assert.NoError(t, err)
+		} else {
+			assert.Error(t, err, tt.expectErr)
+		}
 
-		var buf bytes.Buffer
-		p := printer.Config{Mode: printer.TabIndent, Tabwidth: 4}
-		p.Fprint(&buf, token.NewFileSet(), a.main.files[0])
+		// NOTE: debug
+		// var buf bytes.Buffer
+		// p := printer.Config{Mode: printer.TabIndent, Tabwidth: 4}
+		// p.Fprint(&buf, token.NewFileSet(), a.main.files)
+	}
+}
 
-		// TODO: Compare expect code string. Probably use comparing with AST converted string.
-		fmt.Println(buf.String())
+func TestReplaceFuncs(t *testing.T) {
+	tests := []struct {
+		main string
+		deps []string
+	}{
+		{
+			main: "testdata/test.go",
+			deps: []string{
+				"testdata/test2.go",
+				"testdata/util.go",
+				"testdata/util2/util2.go",
+			},
+		},
+	}
+	for _, tt := range tests {
+		a := dummyAggregator(t, tt.main)
+
+		for _, d := range tt.deps {
+			pkg, err := a.parsePackage(d)
+			assert.NoError(t, err)
+			a.depends = append(a.depends, pkg)
+		}
+
+		a.replaceUtilFuncs()
 	}
 }

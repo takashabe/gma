@@ -13,16 +13,21 @@ import (
 
 // Aggregator provides aggregate solver
 type Aggregator struct {
-	solver string
-	main   *Package
-	subs   []*Package
+	solver  string
+	main    *Package
+	depends []*Package
 }
 
 // Package represent package and files
 type Package struct {
-	files []*ast.File
-	name  string
+	files   *ast.File
+	name    string
+	imports []string
 }
+
+var (
+	fset = token.NewFileSet()
+)
 
 // Aggregate aggregate main and sub files.
 func (a Aggregator) Aggregate(mainFile string, subFiles []string) error {
@@ -30,32 +35,29 @@ func (a Aggregator) Aggregate(mainFile string, subFiles []string) error {
 	return nil
 }
 
-func (Aggregator) parsePackage(names []string) (*Package, error) {
-	var astFiles []*ast.File
-
-	fs := token.NewFileSet()
-	for _, name := range names {
-		if !strings.HasSuffix(name, "go") {
-			continue
-		}
-		af, err := parser.ParseFile(fs, name, nil, parser.ParseComments)
-		if err != nil {
-			return nil, err
-		}
-		astFiles = append(astFiles, af)
+func (a Aggregator) parsePackage(name string) (*Package, error) {
+	if !strings.HasSuffix(name, "go") {
+		return nil, errors.Errorf("not exists .go file %s", name)
 	}
-	if len(astFiles) == 0 {
-		return nil, errors.New("Not found correctly go files")
+	af, err := parser.ParseFile(fset, name, nil, parser.ParseComments)
+	if err != nil {
+		return nil, err
+	}
+
+	imports := make([]string, 0, len(af.Imports))
+	for _, i := range af.Imports {
+		imports = append(imports, i.Path.Value)
 	}
 	return &Package{
-		files: astFiles,
-		name:  astFiles[0].Name.Name,
+		files:   af,
+		name:    af.Name.Name,
+		imports: imports,
 	}, nil
 }
 
 func (a Aggregator) getSolverNode() (*ast.Object, bool) {
 	var obj *ast.Object
-	ast.Inspect(a.main.files[0], func(n ast.Node) bool {
+	ast.Inspect(a.main.files, func(n ast.Node) bool {
 		fd, ok := n.(*ast.FuncDecl)
 		if !ok {
 			return true
@@ -99,7 +101,7 @@ func (a Aggregator) inejctMain() error {
 	for _, d := range file.Decls {
 		fn, ok := d.(*ast.FuncDecl)
 		if ok {
-			a.main.files[0].Decls = append(a.main.files[0].Decls, fn)
+			a.main.files.Decls = append(a.main.files.Decls, fn)
 			return nil
 		}
 	}
@@ -111,8 +113,15 @@ func templateMain(solver string) string {
 }
 
 // TODO: Rename function when import another util packages.
-func (a Aggregator) replaceUtilFuncs(files []*ast.File) {
-	for _, f := range files {
-		pp.Println(f.Name)
+func (a Aggregator) replaceUtilFuncs() error {
+	// collect util package and method list
+	replacePkgs := []string{}
+	for _, p := range a.depends {
+		if a.main.name != p.name {
+			replacePkgs = append(replacePkgs, p.name)
+		}
 	}
+	pp.Println(replacePkgs)
+
+	return nil
 }
