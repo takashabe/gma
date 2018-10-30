@@ -7,7 +7,6 @@ import (
 	"go/token"
 	"strings"
 
-	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 )
 
@@ -121,7 +120,37 @@ func (a Aggregator) replaceUtilFuncs() error {
 			replacePkgs = append(replacePkgs, p.name)
 		}
 	}
-	pp.Println(replacePkgs)
+
+	// TODO: detect method
+	ast.Inspect(a.main.files, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		selector, ok := call.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		ident, ok := selector.X.(*ast.Ident)
+		if !ok {
+			return true
+		}
+
+		repOk := false
+		for _, rp := range replacePkgs {
+			if rp == ident.Name {
+				repOk = true
+				break
+			}
+		}
+		if !repOk {
+			return true
+		}
+
+		// NOTE: ident.Name == call replace package name
+
+		return true
+	})
 
 	return nil
 }
