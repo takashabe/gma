@@ -10,6 +10,7 @@ type P001 struct{}
 
 func (p *P001) Solve() {
 	fmt.Println("main")
+	localFn("main")
 }
 
 func (p *P001) callExportFunc() {

@@ -1,13 +1,17 @@
 package aggregate
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
 	"go/parser"
+	"go/printer"
 	"go/token"
 	"strings"
 
+	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
+	"golang.org/x/tools/go/ast/astutil"
 )
 
 // Aggregator provides aggregate solver
@@ -92,7 +96,7 @@ func (a Aggregator) inejctMain() error {
 	if !ok {
 		return errors.New("not exists Solver")
 	}
-	file, err := parser.ParseFile(token.NewFileSet(), "main", templateMain(node.Name), parser.Mode(0))
+	file, err := parser.ParseFile(fset, "main", templateMain(node.Name), parser.Mode(0))
 	if err != nil {
 		return err
 	}
@@ -105,6 +109,28 @@ func (a Aggregator) inejctMain() error {
 		}
 	}
 	return errors.New("failed to inject main method")
+}
+
+func (a Aggregator) mergeDepends() error {
+	for _, d := range a.depends {
+		var buf bytes.Buffer
+		printer.Fprint(&buf, fset, d.files)
+	}
+	return nil
+}
+
+func (a Aggregator) addDependPrefix(pkg *Package) error {
+	pre := func(c *astutil.Cursor) bool {
+		n := c.Node()
+		if d, ok := n.(*ast.GenDecl); ok && d.Specs[0].(*ast.ValueSpec).Names[0].Name == "x" {
+			c.Delete()
+			// The cursor is now effectively atop the 'var y int' node.
+			c.InsertAfter(vardecl("x1", "int"))
+		}
+		return true
+	}
+
+	return nil
 }
 
 func templateMain(solver string) string {
@@ -121,13 +147,14 @@ func (a Aggregator) replaceUtilFuncs() error {
 		}
 	}
 
-	// TODO: detect method
 	ast.Inspect(a.main.files, func(n ast.Node) bool {
-		call, ok := n.(*ast.CallExpr)
-		if !ok {
+		fn, ok := n.(*ast.FuncDecl)
+		if ok {
+			pp.Println(fn)
 			return true
 		}
-		selector, ok := call.(*ast.SelectorExpr)
+
+		selector, ok := n.(*ast.SelectorExpr)
 		if !ok {
 			return true
 		}
@@ -147,6 +174,7 @@ func (a Aggregator) replaceUtilFuncs() error {
 			return true
 		}
 
+		pp.Println(ident)
 		// NOTE: ident.Name == call replace package name
 
 		return true

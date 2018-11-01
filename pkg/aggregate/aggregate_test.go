@@ -77,6 +77,24 @@ func TestInjectMain(t *testing.T) {
 	}
 }
 
+func TestAddDependPrefix(t *testing.T) {
+	tests := []struct {
+		depend string
+	}{
+		// {"testdata/test2.go"},
+		// {"testdata/util.go"},
+		{"testdata/util2/util2.go"},
+	}
+	for _, tt := range tests {
+		a := Aggregator{}
+		pkg, err := a.parsePackage(tt.depend)
+		assert.NoError(t, err)
+
+		err = a.addDependPrefix(pkg)
+		assert.NoError(t, err)
+	}
+}
+
 func TestReplaceFuncs(t *testing.T) {
 	tests := []struct {
 		main string
