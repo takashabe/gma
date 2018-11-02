@@ -120,15 +120,21 @@ func (a Aggregator) mergeDepends() error {
 }
 
 func (a Aggregator) addDependPrefix(pkg *Package) error {
+	// prefix := fmt.Sprintf("_%s_", strings.ToLower(pkg.name))
 	pre := func(c *astutil.Cursor) bool {
 		n := c.Node()
-		if d, ok := n.(*ast.GenDecl); ok && d.Specs[0].(*ast.ValueSpec).Names[0].Name == "x" {
-			c.Delete()
-			// The cursor is now effectively atop the 'var y int' node.
-			c.InsertAfter(vardecl("x1", "int"))
+		fn, ok := n.(*ast.FuncDecl)
+		if !ok {
+			return true
 		}
+		// replace func name -> "prefix_ + origin_func_name"
+		pp.Println(fn)
+
 		return true
 	}
+	// Todo: receive changed node tree
+	n := astutil.Apply(pkg.files, pre, nil)
+	pp.Println(n)
 
 	return nil
 }
