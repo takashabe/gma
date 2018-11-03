@@ -11,7 +11,6 @@ import (
 
 	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
-	"golang.org/x/tools/go/ast/astutil"
 )
 
 // Aggregator provides aggregate solver
@@ -119,24 +118,22 @@ func (a Aggregator) mergeDepends() error {
 	return nil
 }
 
-func (a Aggregator) addDependPrefix(pkg *Package) error {
-	// prefix := fmt.Sprintf("_%s_", strings.ToLower(pkg.name))
-	pre := func(c *astutil.Cursor) bool {
-		n := c.Node()
-		fn, ok := n.(*ast.FuncDecl)
-		if !ok {
-			return true
+func addDependPrefix(pkg *Package) ast.Node {
+	prefix := fmt.Sprintf("_%s", strings.ToLower(pkg.name))
+	ast.Inspect(pkg.files, func(n ast.Node) bool {
+		switch t := n.(type) {
+		case *ast.FuncDecl:
+			t.Name.Name = fmt.Sprintf("%s_%s", prefix, t.Name.Name)
+		case *ast.CallExpr:
+			id, ok := t.Fun.(*ast.Ident)
+			if !ok {
+				return true
+			}
+			id.Name = fmt.Sprintf("%s_%s", prefix, id.Name)
 		}
-		// replace func name -> "prefix_ + origin_func_name"
-		pp.Println(fn)
-
 		return true
-	}
-	// Todo: receive changed node tree
-	n := astutil.Apply(pkg.files, pre, nil)
-	pp.Println(n)
-
-	return nil
+	})
+	return pkg.files
 }
 
 func templateMain(solver string) string {
@@ -156,9 +153,9 @@ func (a Aggregator) replaceUtilFuncs() error {
 	ast.Inspect(a.main.files, func(n ast.Node) bool {
 		fn, ok := n.(*ast.FuncDecl)
 		if ok {
-			pp.Println(fn)
 			return true
 		}
+		pp.Println(fn)
 
 		selector, ok := n.(*ast.SelectorExpr)
 		if !ok {
@@ -180,7 +177,6 @@ func (a Aggregator) replaceUtilFuncs() error {
 			return true
 		}
 
-		pp.Println(ident)
 		// NOTE: ident.Name == call replace package name
 
 		return true

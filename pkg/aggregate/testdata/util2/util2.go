@@ -13,9 +13,9 @@ func Echo(s string) string {
 }
 
 func bar() {
-	fmt.Println("bar")
+	fmt.Println("bar_string")
 }
 
 func foo() {
-	fmt.Println("foo")
+	fmt.Println("foo_string")
 }

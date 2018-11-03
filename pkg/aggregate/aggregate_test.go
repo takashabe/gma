@@ -1,6 +1,9 @@
 package aggregate
 
 import (
+	"go/printer"
+	"go/token"
+	"os"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -90,8 +93,8 @@ func TestAddDependPrefix(t *testing.T) {
 		pkg, err := a.parsePackage(tt.depend)
 		assert.NoError(t, err)
 
-		err = a.addDependPrefix(pkg)
-		assert.NoError(t, err)
+		n := addDependPrefix(pkg)
+		printer.Fprint(os.Stdout, token.NewFileSet(), n)
 	}
 }
 
