@@ -1,13 +1,13 @@
 package aggregate
 
 import (
-	"bytes"
 	"fmt"
 	"go/ast"
 	"go/parser"
-	"go/printer"
 	"go/token"
 	"strings"
+
+	"golang.org/x/tools/go/ast/astutil"
 
 	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
@@ -110,10 +110,23 @@ func (a Aggregator) inejctMain() error {
 	return errors.New("failed to inject main method")
 }
 
-func (a Aggregator) mergeDepends() error {
-	for _, d := range a.depends {
-		var buf bytes.Buffer
-		printer.Fprint(&buf, fset, d.files)
+func mergeFiles(ns []ast.Node) ast.Node {
+	pre := func(c *astutil.Cursor) bool {
+		n := c.Node()
+		g, ok := n.(*ast.GenDecl)
+		if !ok {
+			return true
+		}
+		pp.Println(g)
+		return true
+	}
+
+	for _, n := range ns {
+		// var buf bytes.Buffer
+		// printer.Fprint(&buf, fset, d.files)
+
+		a := astutil.Apply(n, pre, nil)
+		pp.Println(a)
 	}
 	return nil
 }
@@ -141,21 +154,23 @@ func templateMain(solver string) string {
 }
 
 // TODO: Rename function when import another util packages.
-func (a Aggregator) replaceUtilFuncs() error {
+func (a Aggregator) replaceUtilFuncs() ast.Node {
 	// collect util package and method list
 	replacePkgs := []string{}
 	for _, p := range a.depends {
 		if a.main.name != p.name {
+			addDependPrefix(p)
 			replacePkgs = append(replacePkgs, p.name)
 		}
 	}
 
-	ast.Inspect(a.main.files, func(n ast.Node) bool {
-		fn, ok := n.(*ast.FuncDecl)
-		if ok {
+	pre := func(c *astutil.Cursor) bool {
+		n := c.Node()
+
+		if call, ok := n.(*ast.CallExpr); ok {
+			pp.Println(call)
 			return true
 		}
-		pp.Println(fn)
 
 		selector, ok := n.(*ast.SelectorExpr)
 		if !ok {
@@ -178,9 +193,8 @@ func (a Aggregator) replaceUtilFuncs() error {
 		}
 
 		// NOTE: ident.Name == call replace package name
-
 		return true
-	})
+	}
 
-	return nil
+	return astutil.Apply(a.main.files, pre, nil)
 }

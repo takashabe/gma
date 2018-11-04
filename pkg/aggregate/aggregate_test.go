@@ -1,11 +1,14 @@
 package aggregate
 
 import (
+	"go/ast"
+	"go/parser"
 	"go/printer"
 	"go/token"
 	"os"
 	"testing"
 
+	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -106,8 +109,6 @@ func TestReplaceFuncs(t *testing.T) {
 		{
 			main: "testdata/test.go",
 			deps: []string{
-				"testdata/test2.go",
-				"testdata/util.go",
 				"testdata/util2/util2.go",
 			},
 		},
@@ -122,5 +123,42 @@ func TestReplaceFuncs(t *testing.T) {
 		}
 
 		a.replaceUtilFuncs()
+	}
+}
+
+func TestParseExpr(t *testing.T) {
+	tests := []struct {
+		expr string
+	}{
+		{"foo(x, y)"},
+	}
+	for _, tt := range tests {
+		n, err := parser.ParseExpr(tt.expr)
+		assert.NoError(t, err)
+		pp.Println(n)
+	}
+}
+
+func TestMergeFiles(t *testing.T) {
+	tests := []struct {
+		files []string
+	}{
+		{
+			[]string{
+				"testdata/util.go",
+			},
+		},
+	}
+	for _, tt := range tests {
+		ns := make([]ast.Node, 0, len(tt.files))
+		for _, f := range tt.files {
+			a := Aggregator{}
+			p, err := a.parsePackage(f)
+			assert.NoError(t, err)
+
+			ns = append(ns, p.files)
+		}
+
+		mergeFiles(ns)
 	}
 }
