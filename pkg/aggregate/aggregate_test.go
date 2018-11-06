@@ -146,19 +146,24 @@ func TestMergeFiles(t *testing.T) {
 		{
 			[]string{
 				"testdata/util.go",
+				"testdata/util2/util2.go",
 			},
 		},
 	}
 	for _, tt := range tests {
-		ns := make([]ast.Node, 0, len(tt.files))
+		pkgs := make([]*Package, 0, len(tt.files))
 		for _, f := range tt.files {
 			a := Aggregator{}
 			p, err := a.parsePackage(f)
 			assert.NoError(t, err)
 
-			ns = append(ns, p.files)
+			pkgs = append(pkgs, p)
 		}
 
-		mergeFiles(ns)
+		files := make([]*ast.File, 0, len(pkgs))
+		for _, pkg := range pkgs {
+			files = append(files, pkg.file)
+		}
+		mergeFiles(files)
 	}
 }

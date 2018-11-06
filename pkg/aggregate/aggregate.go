@@ -22,7 +22,7 @@ type Aggregator struct {
 
 // Package represent package and files
 type Package struct {
-	files   *ast.File
+	file    *ast.File
 	name    string
 	imports []string
 }
@@ -51,7 +51,7 @@ func (a Aggregator) parsePackage(name string) (*Package, error) {
 		imports = append(imports, i.Path.Value)
 	}
 	return &Package{
-		files:   af,
+		file:    af,
 		name:    af.Name.Name,
 		imports: imports,
 	}, nil
@@ -59,7 +59,7 @@ func (a Aggregator) parsePackage(name string) (*Package, error) {
 
 func (a Aggregator) getSolverNode() (*ast.Object, bool) {
 	var obj *ast.Object
-	ast.Inspect(a.main.files, func(n ast.Node) bool {
+	ast.Inspect(a.main.file, func(n ast.Node) bool {
 		fd, ok := n.(*ast.FuncDecl)
 		if !ok {
 			return true
@@ -103,37 +103,49 @@ func (a Aggregator) inejctMain() error {
 	for _, d := range file.Decls {
 		fn, ok := d.(*ast.FuncDecl)
 		if ok {
-			a.main.files.Decls = append(a.main.files.Decls, fn)
+			a.main.file.Decls = append(a.main.file.Decls, fn)
 			return nil
 		}
 	}
 	return errors.New("failed to inject main method")
 }
 
-func mergeFiles(ns []ast.Node) ast.Node {
-	pre := func(c *astutil.Cursor) bool {
-		n := c.Node()
-		g, ok := n.(*ast.GenDecl)
-		if !ok {
-			return true
+func mergeFiles(files []*ast.File) (*ast.File, error) {
+	switch len(files) {
+	case 1:
+		return files[0], nil
+	case 0:
+		return nil, errors.New("not found merge files")
+	}
+
+	var (
+		imports []*ast.ImportSpec
+		decls   []*ast.Decl
+	)
+
+	seen := make(map[string]struct{})
+	for _, file := range files {
+		for _, imp := range file.Imports {
+			p := imp.Path.Value
+			if _, ok := seen[p]; ok {
+				continue
+			}
+			imports = append(imports, imp)
+			seen[p] = struct{}{}
 		}
-		pp.Println(g)
-		return true
 	}
 
-	for _, n := range ns {
-		// var buf bytes.Buffer
-		// printer.Fprint(&buf, fset, d.files)
+	// Collect decls
 
-		a := astutil.Apply(n, pre, nil)
-		pp.Println(a)
-	}
-	return nil
+	pp.Println(imports)
+	pp.Println(decls)
+
+	return nil, nil
 }
 
 func addDependPrefix(pkg *Package) ast.Node {
 	prefix := fmt.Sprintf("_%s", strings.ToLower(pkg.name))
-	ast.Inspect(pkg.files, func(n ast.Node) bool {
+	ast.Inspect(pkg.file, func(n ast.Node) bool {
 		switch t := n.(type) {
 		case *ast.FuncDecl:
 			t.Name.Name = fmt.Sprintf("%s_%s", prefix, t.Name.Name)
@@ -146,7 +158,7 @@ func addDependPrefix(pkg *Package) ast.Node {
 		}
 		return true
 	})
-	return pkg.files
+	return pkg.file
 }
 
 func templateMain(solver string) string {
@@ -196,5 +208,5 @@ func (a Aggregator) replaceUtilFuncs() ast.Node {
 		return true
 	}
 
-	return astutil.Apply(a.main.files, pre, nil)
+	return astutil.Apply(a.main.file, pre, nil)
 }
