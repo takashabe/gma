@@ -1,6 +1,9 @@
 package util2
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 func Foo() error {
 	bar()
@@ -13,7 +16,7 @@ func Echo(s string) string {
 }
 
 func bar() {
-	fmt.Println("bar_string")
+	fmt.Fprintf(os.Stdout, "bar_string")
 }
 
 func foo() {

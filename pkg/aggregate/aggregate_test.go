@@ -1,6 +1,8 @@
 package aggregate
 
 import (
+	"bytes"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/printer"
@@ -145,7 +147,7 @@ func TestMergeFiles(t *testing.T) {
 	}{
 		{
 			[]string{
-				"testdata/util.go",
+				"testdata/util2/util.go",
 				"testdata/util2/util2.go",
 			},
 		},
@@ -164,6 +166,18 @@ func TestMergeFiles(t *testing.T) {
 		for _, pkg := range pkgs {
 			files = append(files, pkg.file)
 		}
-		mergeFiles(files)
+		actual, err := mergeFiles(files)
+		assert.NoError(t, err)
+
+		var (
+			buf  bytes.Buffer
+			fset = token.NewFileSet()
+			pr   = printer.Config{}
+		)
+		pr.Fprint(&buf, fset, actual)
+		_, err = parser.ParseFile(fset, "", buf.String(), parser.ParseComments)
+		assert.NoError(t, err)
+
+		fmt.Println(buf.String())
 	}
 }

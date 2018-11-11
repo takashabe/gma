@@ -118,11 +118,7 @@ func mergeFiles(files []*ast.File) (*ast.File, error) {
 		return nil, errors.New("not found merge files")
 	}
 
-	var (
-		imports []*ast.ImportSpec
-		decls   []*ast.Decl
-	)
-
+	imports := []*ast.ImportSpec{}
 	seen := make(map[string]struct{})
 	for _, file := range files {
 		for _, imp := range file.Imports {
@@ -136,11 +132,48 @@ func mergeFiles(files []*ast.File) (*ast.File, error) {
 	}
 
 	// Collect decls
+	decls := []ast.Decl{}
+	for _, file := range files {
+		for _, d := range file.Decls {
+			g, ok := d.(*ast.GenDecl)
+			// TODO: All import decls through for debug.
+			if ok && g.Tok == token.IMPORT {
+				pp.Println(g)
+				continue
+			}
+			decls = append(decls, d)
+		}
+	}
 
-	pp.Println(imports)
-	pp.Println(decls)
+	// Make GenDecl for imports
+	if len(imports) > 0 {
+		imps := make([]ast.Spec, 0, len(imports))
+		for _, i := range imports {
+			imps = append(imps, i)
+		}
 
-	return nil, nil
+		g := &ast.GenDecl{
+			TokPos: files[0].Package,
+			Tok:    token.IMPORT,
+			Specs:  imps,
+		}
+		decls = append(decls, g)
+	}
+
+	// TODO(takashabe): Breaked when has the multi package files. Add parameter a primary package.
+	pos := files[0].Package
+	scope := files[0].Scope
+	name := files[0].Name
+
+	file := &ast.File{
+		Package: pos,
+		Name:    name,
+		Decls:   decls,
+		Imports: imports,
+		Scope:   scope,
+	}
+
+	return file, nil
 }
 
 func addDependPrefix(pkg *Package) ast.Node {
@@ -209,4 +242,23 @@ func (a Aggregator) replaceUtilFuncs() ast.Node {
 	}
 
 	return astutil.Apply(a.main.file, pre, nil)
+}
+
+func funcName(f *ast.FuncDecl) string {
+	receiver := f.Recv
+	if receiver == nil || len(receiver.List) != 1 {
+		return f.Name.Name
+	}
+
+	t := receiver.List[0].Type
+	if p, _ := t.(*ast.StarExpr); p != nil {
+		t = p.X
+	}
+
+	// reciever name + func name
+	if p, _ := t.(*ast.Ident); p != nil {
+		return p.Name + "." + f.Name.Name
+	}
+
+	return f.Name.Name
 }
