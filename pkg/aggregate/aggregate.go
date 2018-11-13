@@ -138,26 +138,10 @@ func mergeFiles(files []*ast.File) (*ast.File, error) {
 			g, ok := d.(*ast.GenDecl)
 			// TODO: All import decls through for debug.
 			if ok && g.Tok == token.IMPORT {
-				pp.Println(g)
 				continue
 			}
 			decls = append(decls, d)
 		}
-	}
-
-	// Make GenDecl for imports
-	if len(imports) > 0 {
-		imps := make([]ast.Spec, 0, len(imports))
-		for _, i := range imports {
-			imps = append(imps, i)
-		}
-
-		g := &ast.GenDecl{
-			TokPos: files[0].Package,
-			Tok:    token.IMPORT,
-			Specs:  imps,
-		}
-		decls = append(decls, g)
 	}
 
 	// TODO(takashabe): Breaked when has the multi package files. Add parameter a primary package.

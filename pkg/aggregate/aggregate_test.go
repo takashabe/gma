@@ -13,6 +13,7 @@ import (
 	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/tools/imports"
 )
 
 func dummyAggregator(t *testing.T, f string) *Aggregator {
@@ -166,18 +167,17 @@ func TestMergeFiles(t *testing.T) {
 		for _, pkg := range pkgs {
 			files = append(files, pkg.file)
 		}
-		actual, err := mergeFiles(files)
+		mf, err := mergeFiles(files)
 		assert.NoError(t, err)
 
 		var (
-			buf  bytes.Buffer
+			buf  = bytes.Buffer{}
 			fset = token.NewFileSet()
-			pr   = printer.Config{}
 		)
-		pr.Fprint(&buf, fset, actual)
-		_, err = parser.ParseFile(fset, "", buf.String(), parser.ParseComments)
-		assert.NoError(t, err)
 
-		fmt.Println(buf.String())
+		printer.Fprint(&buf, fset, mf)
+		out, err := imports.Process("", buf.Bytes(), nil)
+		assert.NoError(t, err)
+		fmt.Println(string(out))
 	}
 }
