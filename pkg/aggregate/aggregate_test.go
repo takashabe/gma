@@ -2,13 +2,11 @@ package aggregate
 
 import (
 	"go/ast"
-	"go/parser"
 	"go/printer"
 	"go/token"
 	"os"
 	"testing"
 
-	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -123,19 +121,6 @@ func TestReplaceFuncs(t *testing.T) {
 		}
 
 		a.replaceUtilFuncs()
-	}
-}
-
-func TestParseExpr(t *testing.T) {
-	tests := []struct {
-		expr string
-	}{
-		{"foo(x, y)"},
-	}
-	for _, tt := range tests {
-		n, err := parser.ParseExpr(tt.expr)
-		assert.NoError(t, err)
-		pp.Println(n)
 	}
 }
 
