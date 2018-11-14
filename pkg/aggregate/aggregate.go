@@ -7,11 +7,11 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"io"
 	"strings"
 
 	"golang.org/x/tools/go/ast/astutil"
 
-	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 	"golang.org/x/tools/imports"
 )
@@ -24,6 +24,7 @@ type Aggregator struct {
 }
 
 // Package represent package and files
+// TODO: Package rename to `File`, and file field to `ast`
 type Package struct {
 	file    *ast.File
 	name    string
@@ -35,8 +36,44 @@ var (
 )
 
 // Aggregate aggregate main and sub files.
-func (a Aggregator) Aggregate(mainFile string, subFiles []string) error {
-	// TODO: implements
+func Aggregate(mainFile string, subFiles []string) (*ast.File, error) {
+	a := Aggregator{}
+	mp, err := a.parsePackage(mainFile)
+	if err != nil {
+		return nil, err
+	}
+	a.main = mp
+
+	for _, dep := range subFiles {
+		dp, err := a.parsePackage(dep)
+		if err != nil {
+			return nil, err
+		}
+		a.depends = append(a.depends, dp)
+	}
+
+	// todo: impl
+	if err := a.inejctMain(); err != nil {
+		return nil, err
+	}
+	n := a.replaceUtilFuncs()
+	f, ok := n.(*ast.File)
+	if !ok {
+		return nil, errors.New("invalid depends files")
+	}
+	a.main.file = f
+
+	files := make([]*ast.File, 0)
+	files = append(files, a.main.file)
+	for _, d := range a.depends {
+		files = append(files, d.file)
+	}
+	return mergeFiles(files)
+}
+
+// Fprint print Aggregator hold main file.
+// Todo: Add print mode arg support.
+func (a Aggregator) Fprint(w io.Writer, _ int) error {
 	return nil
 }
 
@@ -193,11 +230,6 @@ func (a Aggregator) replaceUtilFuncs() ast.Node {
 	pre := func(c *astutil.Cursor) bool {
 		n := c.Node()
 
-		if call, ok := n.(*ast.CallExpr); ok {
-			pp.Println(call)
-			return true
-		}
-
 		selector, ok := n.(*ast.SelectorExpr)
 		if !ok {
 			return true
@@ -219,6 +251,7 @@ func (a Aggregator) replaceUtilFuncs() ast.Node {
 		}
 
 		// NOTE: ident.Name == call replace package name
+		// TODO: Implements depend funcs rename in the main file
 		return true
 	}
 

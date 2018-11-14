@@ -175,3 +175,29 @@ func TestMergeFiles(t *testing.T) {
 		assert.NoError(t, err)
 	}
 }
+
+func TestAggregate(t *testing.T) {
+	tests := []struct {
+		main string
+		deps []string
+	}{
+		{
+			"testdata/test.go",
+			[]string{
+				"testdata/util.go",
+			},
+		},
+		{
+			"testdata/test.go",
+			[]string{
+				"testdata/util2/util2.go",
+			},
+		},
+	}
+	for _, tt := range tests {
+		actual, err := Aggregate(tt.main, tt.deps)
+		assert.NoError(t, err)
+
+		printer.Fprint(os.Stdout, token.NewFileSet(), actual)
+	}
+}
