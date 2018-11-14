@@ -121,19 +121,6 @@ func mergeFiles(files []*ast.File) (*ast.File, error) {
 		return nil, errors.New("not found merge files")
 	}
 
-	impSpecs := []*ast.ImportSpec{}
-	seen := make(map[string]struct{})
-	for _, file := range files {
-		for _, imp := range file.Imports {
-			p := imp.Path.Value
-			if _, ok := seen[p]; ok {
-				continue
-			}
-			impSpecs = append(impSpecs, imp)
-			seen[p] = struct{}{}
-		}
-	}
-
 	// Collect decls
 	decls := []ast.Decl{}
 	for _, file := range files {
@@ -149,15 +136,12 @@ func mergeFiles(files []*ast.File) (*ast.File, error) {
 
 	// TODO(takashabe): Breaked when has the multi package files. Add parameter a primary package.
 	pos := files[0].Package
-	scope := files[0].Scope
 	name := files[0].Name
 
 	file := &ast.File{
 		Package: pos,
 		Name:    name,
 		Decls:   decls,
-		Imports: impSpecs,
-		Scope:   scope,
 	}
 
 	var (
