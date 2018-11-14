@@ -224,22 +224,3 @@ func (a Aggregator) replaceUtilFuncs() ast.Node {
 
 	return astutil.Apply(a.main.file, pre, nil)
 }
-
-func funcName(f *ast.FuncDecl) string {
-	receiver := f.Recv
-	if receiver == nil || len(receiver.List) != 1 {
-		return f.Name.Name
-	}
-
-	t := receiver.List[0].Type
-	if p, _ := t.(*ast.StarExpr); p != nil {
-		t = p.X
-	}
-
-	// reciever name + func name
-	if p, _ := t.(*ast.Ident); p != nil {
-		return p.Name + "." + f.Name.Name
-	}
-
-	return f.Name.Name
-}
