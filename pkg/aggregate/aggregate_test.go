@@ -1,8 +1,6 @@
 package aggregate
 
 import (
-	"bytes"
-	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/printer"
@@ -13,7 +11,6 @@ import (
 	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/tools/imports"
 )
 
 func dummyAggregator(t *testing.T, f string) *Aggregator {
@@ -152,6 +149,12 @@ func TestMergeFiles(t *testing.T) {
 				"testdata/util2/util2.go",
 			},
 		},
+		{
+			[]string{
+				"testdata/util.go",
+				"testdata/util2/util2.go",
+			},
+		},
 	}
 	for _, tt := range tests {
 		pkgs := make([]*Package, 0, len(tt.files))
@@ -167,17 +170,8 @@ func TestMergeFiles(t *testing.T) {
 		for _, pkg := range pkgs {
 			files = append(files, pkg.file)
 		}
-		mf, err := mergeFiles(files)
-		assert.NoError(t, err)
 
-		var (
-			buf  = bytes.Buffer{}
-			fset = token.NewFileSet()
-		)
-
-		printer.Fprint(&buf, fset, mf)
-		out, err := imports.Process("", buf.Bytes(), nil)
+		_, err := mergeFiles(files)
 		assert.NoError(t, err)
-		fmt.Println(string(out))
 	}
 }

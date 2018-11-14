@@ -1,9 +1,11 @@
 package aggregate
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
 	"go/parser"
+	"go/printer"
 	"go/token"
 	"strings"
 
@@ -11,6 +13,7 @@ import (
 
 	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
+	"golang.org/x/tools/imports"
 )
 
 // Aggregator provides aggregate solver
@@ -118,7 +121,7 @@ func mergeFiles(files []*ast.File) (*ast.File, error) {
 		return nil, errors.New("not found merge files")
 	}
 
-	imports := []*ast.ImportSpec{}
+	impSpecs := []*ast.ImportSpec{}
 	seen := make(map[string]struct{})
 	for _, file := range files {
 		for _, imp := range file.Imports {
@@ -126,7 +129,7 @@ func mergeFiles(files []*ast.File) (*ast.File, error) {
 			if _, ok := seen[p]; ok {
 				continue
 			}
-			imports = append(imports, imp)
+			impSpecs = append(impSpecs, imp)
 			seen[p] = struct{}{}
 		}
 	}
@@ -153,11 +156,21 @@ func mergeFiles(files []*ast.File) (*ast.File, error) {
 		Package: pos,
 		Name:    name,
 		Decls:   decls,
-		Imports: imports,
+		Imports: impSpecs,
 		Scope:   scope,
 	}
 
-	return file, nil
+	var (
+		buf  = bytes.Buffer{}
+		fset = token.NewFileSet()
+	)
+	printer.Fprint(&buf, fset, file)
+	a, err := imports.Process("", buf.Bytes(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return parser.ParseFile(fset, "", a, parser.AllErrors)
 }
 
 func addDependPrefix(pkg *Package) ast.Node {
