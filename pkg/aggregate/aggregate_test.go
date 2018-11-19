@@ -85,8 +85,8 @@ func TestAddDependPrefix(t *testing.T) {
 	tests := []struct {
 		depend string
 	}{
-		// {"testdata/test2.go"},
-		// {"testdata/util.go"},
+		{"testdata/test2.go"},
+		{"testdata/util.go"},
 		{"testdata/util2/util2.go"},
 	}
 	for _, tt := range tests {
@@ -94,8 +94,7 @@ func TestAddDependPrefix(t *testing.T) {
 		pkg, err := a.parsePackage(tt.depend)
 		assert.NoError(t, err)
 
-		n := addDependPrefix(pkg)
-		printer.Fprint(os.Stdout, token.NewFileSet(), n)
+		addDependPrefix(pkg)
 	}
 }
 
@@ -120,7 +119,8 @@ func TestReplaceFuncs(t *testing.T) {
 			a.depends = append(a.depends, pkg)
 		}
 
-		a.replaceUtilFuncs()
+		n := a.replaceUtilFuncs()
+		printer.Fprint(os.Stdout, token.NewFileSet(), n)
 	}
 }
 

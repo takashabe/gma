@@ -10,9 +10,9 @@ import (
 	"io"
 	"strings"
 
-	"golang.org/x/tools/go/ast/astutil"
-
+	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
+	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/imports"
 )
 
@@ -194,22 +194,32 @@ func mergeFiles(files []*ast.File) (*ast.File, error) {
 	return parser.ParseFile(fset, "", a, parser.AllErrors)
 }
 
-func addDependPrefix(pkg *Package) ast.Node {
+func addDependPrefix(pkg *Package) (ast.Node, map[string]string) {
+	replaceFuncs := make(map[string]string)
+
 	prefix := fmt.Sprintf("_%s", strings.ToLower(pkg.name))
 	ast.Inspect(pkg.file, func(n ast.Node) bool {
 		switch t := n.(type) {
 		case *ast.FuncDecl:
-			t.Name.Name = fmt.Sprintf("%s_%s", prefix, t.Name.Name)
+			origin := fmt.Sprintf("%s.%s", pkg.name, t.Name.Name)
+			replaced := fmt.Sprintf("%s_%s", prefix, t.Name.Name)
+
+			replaceFuncs[origin] = replaced
+			t.Name.Name = replaced
 		case *ast.CallExpr:
 			id, ok := t.Fun.(*ast.Ident)
 			if !ok {
 				return true
 			}
-			id.Name = fmt.Sprintf("%s_%s", prefix, id.Name)
+			origin := fmt.Sprintf("%s.%s", pkg.name, id.Name)
+			replaced := fmt.Sprintf("%s_%s", prefix, id.Name)
+
+			replaceFuncs[replaced] = origin
+			id.Name = replaced
 		}
 		return true
 	})
-	return pkg.file
+	return pkg.file, replaceFuncs
 }
 
 func templateMain(solver string) string {
@@ -219,29 +229,64 @@ func templateMain(solver string) string {
 // TODO: Rename function when import another util packages.
 func (a Aggregator) replaceUtilFuncs() ast.Node {
 	// collect util package and method list
+	replaceFuncs := make(map[string]string)
 	replacePkgs := []string{}
 	for _, p := range a.depends {
 		if a.main.name != p.name {
-			addDependPrefix(p)
 			replacePkgs = append(replacePkgs, p.name)
+
+			_, fs := addDependPrefix(p)
+			for origin, replaced := range fs {
+				replaceFuncs[origin] = replaced
+			}
+		}
+	}
+
+	files := []*ast.File{a.main.file}
+	for _, df := range a.depends {
+		files = append(files, df.file)
+	}
+	mf, err := mergeFiles(files)
+	if err != nil {
+		panic("failed to mergeFiles")
+	}
+
+	replaceFuncNodes := make(map[string]*ast.FuncDecl)
+	ast.Inspect(mf, func(n ast.Node) bool {
+		fn, ok := n.(*ast.FuncDecl)
+		if !ok {
+			return true
+		}
+
+		for origin, replaced := range replaceFuncs {
+			if fn.Name.Name == replaced {
+				replaceFuncNodes[origin] = fn
+				return true
+			}
+		}
+		return true
+	})
+
+	makeCallExpr := func(n *ast.Ident) *ast.CallExpr {
+		return &ast.CallExpr{
+			Fun: n,
 		}
 	}
 
 	pre := func(c *astutil.Cursor) bool {
 		n := c.Node()
-
 		selector, ok := n.(*ast.SelectorExpr)
 		if !ok {
 			return true
 		}
-		ident, ok := selector.X.(*ast.Ident)
+		x, ok := selector.X.(*ast.Ident)
 		if !ok {
 			return true
 		}
 
 		repOk := false
 		for _, rp := range replacePkgs {
-			if rp == ident.Name {
+			if rp == x.Name {
 				repOk = true
 				break
 			}
@@ -250,10 +295,21 @@ func (a Aggregator) replaceUtilFuncs() ast.Node {
 			return true
 		}
 
-		// NOTE: ident.Name == call replace package name
-		// TODO: Implements depend funcs rename in the main file
+		fn := fmt.Sprintf("%s.%s", x.Name, selector.Sel.Name)
+		repNode, ok := replaceFuncNodes[fn]
+		if !ok {
+			fmt.Printf("not found %s\n", fn)
+			return false
+		}
+		pp.Printf("name: %s, index: %s\n", c.Name(), c.Index())
+
+		// TODO: Completion Args
+		cn := makeCallExpr(repNode.Name)
+		ast.Print(fset, n)
+		c.Replace(cn)
 		return true
 	}
 
-	return astutil.Apply(a.main.file, pre, nil)
+	ret := astutil.Apply(mf, pre, nil)
+	return ret
 }
