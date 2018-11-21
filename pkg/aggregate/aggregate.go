@@ -60,14 +60,7 @@ func Aggregate(mainFile string, subFiles []string) (*ast.File, error) {
 	if !ok {
 		return nil, errors.New("invalid depends files")
 	}
-	a.main.file = f
-
-	files := make([]*ast.File, 0)
-	files = append(files, a.main.file)
-	for _, d := range a.depends {
-		files = append(files, d.file)
-	}
-	return mergeFiles(files)
+	return f, nil
 }
 
 // Fprint print Aggregator hold main file.
