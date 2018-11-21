@@ -10,7 +10,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/k0kubun/pp"
 	"github.com/pkg/errors"
 	"golang.org/x/tools/go/ast/astutil"
 	"golang.org/x/tools/imports"
@@ -267,15 +266,21 @@ func (a Aggregator) replaceUtilFuncs() ast.Node {
 		return true
 	})
 
-	makeCallExpr := func(n *ast.Ident) *ast.CallExpr {
+	makeCallExpr := func(n *ast.Ident, args ...ast.Expr) *ast.CallExpr {
 		return &ast.CallExpr{
-			Fun: n,
+			Fun:  n,
+			Args: args,
 		}
 	}
 
 	pre := func(c *astutil.Cursor) bool {
 		n := c.Node()
-		selector, ok := n.(*ast.SelectorExpr)
+
+		callExpr, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		selector, ok := callExpr.Fun.(*ast.SelectorExpr)
 		if !ok {
 			return true
 		}
@@ -298,14 +303,10 @@ func (a Aggregator) replaceUtilFuncs() ast.Node {
 		fn := fmt.Sprintf("%s.%s", x.Name, selector.Sel.Name)
 		repNode, ok := replaceFuncNodes[fn]
 		if !ok {
-			fmt.Printf("not found %s\n", fn)
 			return false
 		}
-		pp.Printf("name: %s, index: %s\n", c.Name(), c.Index())
 
-		// TODO: Completion Args
-		cn := makeCallExpr(repNode.Name)
-		ast.Print(fset, n)
+		cn := makeCallExpr(repNode.Name, callExpr.Args...)
 		c.Replace(cn)
 		return true
 	}
