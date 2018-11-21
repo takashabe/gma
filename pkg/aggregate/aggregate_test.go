@@ -169,6 +169,13 @@ func TestAggregate(t *testing.T) {
 		{
 			"testdata/test.go",
 			[]string{
+				"testdata/util2/util.go",
+				"testdata/util2/util2.go",
+			},
+		},
+		{
+			"testdata/test2.go",
+			[]string{
 				"testdata/util2/util2.go",
 			},
 		},

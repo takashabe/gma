@@ -60,7 +60,7 @@ func Aggregate(mainFile string, subFiles []string) (*ast.File, error) {
 	if !ok {
 		return nil, errors.New("invalid depends files")
 	}
-	return f, nil
+	return replacePackage(f), nil
 }
 
 // Fprint print Aggregator hold main file.
@@ -306,4 +306,9 @@ func (a Aggregator) replaceUtilFuncs() ast.Node {
 
 	ret := astutil.Apply(mf, pre, nil)
 	return ret
+}
+
+func replacePackage(file *ast.File) *ast.File {
+	file.Name.Name = "main"
+	return file
 }
