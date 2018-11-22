@@ -259,13 +259,6 @@ func (a Aggregator) replaceUtilFuncs() ast.Node {
 		return true
 	})
 
-	makeCallExpr := func(n *ast.Ident, args ...ast.Expr) *ast.CallExpr {
-		return &ast.CallExpr{
-			Fun:  n,
-			Args: args,
-		}
-	}
-
 	pre := func(c *astutil.Cursor) bool {
 		n := c.Node()
 
@@ -299,7 +292,10 @@ func (a Aggregator) replaceUtilFuncs() ast.Node {
 			return false
 		}
 
-		cn := makeCallExpr(repNode.Name, callExpr.Args...)
+		cn := &ast.CallExpr{
+			Fun:  repNode.Name,
+			Args: callExpr.Args,
+		}
 		c.Replace(cn)
 		return true
 	}
