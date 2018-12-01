@@ -63,9 +63,14 @@ func Aggregate(mainFile string, subFiles []string) (*ast.File, error) {
 	return replacePackage(f), nil
 }
 
-// Fprint print Aggregator hold main file.
-// Todo: Add print mode arg support.
-func (a Aggregator) Fprint(w io.Writer, _ int) error {
+// Fprint wrapped printer.Print
+func Fprint(w io.Writer, f *ast.File) error {
+	config := printer.Config{
+		Mode:     printer.TabIndent,
+		Tabwidth: 8,
+		Indent:   0,
+	}
+	config.Fprint(w, fset, f)
 	return nil
 }
 
