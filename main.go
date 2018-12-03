@@ -22,8 +22,9 @@ func main() {
 const (
 	ExitCodeOK = iota
 
-	// TODO: define codes.
+	// TODO: define specific error codes.
 	ExitCodeError
+	ExitCodeParseError
 )
 
 type param struct {
@@ -38,6 +39,7 @@ func (d *depends) String() string {
 }
 
 func (d *depends) Set(s string) error {
+	*d = append(*d, s)
 	return nil
 }
 
@@ -50,15 +52,18 @@ type CLI struct {
 // Run invokes the CLI with the given arguments.
 func (c *CLI) Run(args []string) int {
 	p := &param{}
-	if err := c.parseArgs(args[2:], p); err != nil {
-		return ExitCodeError
+	if err := c.parseArgs(args[1:], p); err != nil {
+		c.printError("failed to parse args. %v\n", err)
+		return ExitCodeParseError
 	}
 
-	ret, err := aggregate.Aggregator(p.main, p.depends)
+	ret, err := aggregate.Aggregate(p.main, p.depends)
 	if err != nil {
+		c.printError("failed to aggregate process. %v\n", err)
 		return ExitCodeError
 	}
 	if err := aggregate.Fprint(c.OutStream, ret); err != nil {
+		c.printError("failed to print aggregated file. %v\n", err)
 		return ExitCodeError
 	}
 
@@ -70,7 +75,7 @@ func (c *CLI) parseArgs(args []string, p *param) error {
 	flags.SetOutput(c.ErrStream)
 
 	flags.StringVar(&p.main, "main", "", "main file")
-	flags.Var(&p.depends, "depends", "", "depend files.")
+	flags.Var(&p.depends, "depends", "depend files.")
 
 	err := flags.Parse(args)
 	if err != nil {
@@ -79,6 +84,6 @@ func (c *CLI) parseArgs(args []string, p *param) error {
 	return nil
 }
 
-func (c *CLI) error(format string, args ...interface{}) {
-	//todo: wrapped fmt.Fprintf()
+func (c *CLI) printError(format string, args ...interface{}) {
+	fmt.Fprintf(c.ErrStream, format, args...)
 }
