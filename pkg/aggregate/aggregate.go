@@ -17,7 +17,6 @@ import (
 
 // Aggregator provides aggregate solver
 type Aggregator struct {
-	solver  string
 	main    *Package
 	depends []*Package
 }
@@ -51,16 +50,12 @@ func Aggregate(mainFile string, subFiles []string) (*ast.File, error) {
 		a.depends = append(a.depends, dp)
 	}
 
-	// todo: impl
-	if err := a.inejctMain(); err != nil {
-		return nil, err
-	}
 	n := a.replaceUtilFuncs()
 	f, ok := n.(*ast.File)
 	if !ok {
 		return nil, errors.New("invalid depends files")
 	}
-	return replacePackage(f), nil
+	return f, nil
 }
 
 // Fprint wrapped printer.Print
@@ -70,7 +65,7 @@ func Fprint(w io.Writer, f *ast.File) error {
 		Tabwidth: 8,
 		Indent:   0,
 	}
-	config.Fprint(w, fset, f)
+	config.Fprint(w, token.NewFileSet(), f)
 	return nil
 }
 
@@ -92,59 +87,6 @@ func (a Aggregator) parsePackage(name string) (*Package, error) {
 		name:    af.Name.Name,
 		imports: imports,
 	}, nil
-}
-
-func (a Aggregator) getSolverNode() (*ast.Object, bool) {
-	var obj *ast.Object
-	ast.Inspect(a.main.file, func(n ast.Node) bool {
-		fd, ok := n.(*ast.FuncDecl)
-		if !ok {
-			return true
-		}
-		if fd.Name.Name != "Solve" {
-			return true
-		}
-		if fd.Recv == nil {
-			return true
-		}
-
-		switch t := fd.Recv.List[0].Type.(type) {
-		case *ast.StarExpr:
-			id, ok := t.X.(*ast.Ident)
-			if !ok {
-				return true
-			}
-			obj = id.Obj
-		case *ast.Ident:
-			obj = t.Obj
-		default:
-			return true
-		}
-
-		a.main.name = fd.Name.Name
-		return false
-	})
-	return obj, obj != nil
-}
-
-func (a Aggregator) inejctMain() error {
-	node, ok := a.getSolverNode()
-	if !ok {
-		return errors.New("not exists Solver")
-	}
-	file, err := parser.ParseFile(fset, "main", templateMain(node.Name), parser.Mode(0))
-	if err != nil {
-		return err
-	}
-
-	for _, d := range file.Decls {
-		fn, ok := d.(*ast.FuncDecl)
-		if ok {
-			a.main.file.Decls = append(a.main.file.Decls, fn)
-			return nil
-		}
-	}
-	return errors.New("failed to inject main method")
 }
 
 func mergeFiles(files []*ast.File) (*ast.File, error) {
@@ -217,10 +159,6 @@ func addDependPrefix(pkg *Package) (ast.Node, map[string]string) {
 		return true
 	})
 	return pkg.file, replaceFuncs
-}
-
-func templateMain(solver string) string {
-	return fmt.Sprintf("package main; func main() { s:=%s{};s.Solve() }", solver)
 }
 
 // TODO: Rename function when import another util packages.
@@ -307,9 +245,4 @@ func (a Aggregator) replaceUtilFuncs() ast.Node {
 
 	ret := astutil.Apply(mf, pre, nil)
 	return ret
-}
-
-func replacePackage(file *ast.File) *ast.File {
-	file.Name.Name = "main"
-	return file
 }

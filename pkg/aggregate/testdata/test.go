@@ -1,10 +1,15 @@
-package solve
+package main
 
 import (
 	"fmt"
 
 	"./util2"
 )
+
+func main() {
+	solver := &P001{}
+	solver.Solve()
+}
 
 type P001 struct{}
 

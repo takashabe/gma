@@ -1,4 +1,6 @@
-package solve
+package main
+
+func main() {}
 
 type P002 struct{}
 

@@ -25,7 +25,7 @@ func TestParsePackage(t *testing.T) {
 		expectPkgName string
 		expectErr     error
 	}{
-		{"testdata/test.go", "solve", nil},
+		{"testdata/test.go", "main", nil},
 		{"testdata/util2/util2.go", "util2", nil},
 		{"foo", "solve", errors.New("not exists .go file foo")},
 	}
@@ -37,47 +37,6 @@ func TestParsePackage(t *testing.T) {
 			continue
 		}
 		assert.Equal(t, tt.expectPkgName, p.name)
-	}
-}
-
-func TestGetSolverNode(t *testing.T) {
-	tests := []struct {
-		name  string
-		exist bool
-	}{
-		{"testdata/test.go", true},
-		{"testdata/test2.go", true},
-		{"testdata/util.go", false},
-	}
-	for _, tt := range tests {
-		a := dummyAggregator(t, tt.name)
-
-		_, ok := a.getSolverNode()
-		assert.Equal(t, tt.exist, ok)
-	}
-}
-
-func TestInjectMain(t *testing.T) {
-	tests := []struct {
-		name      string
-		expectErr error
-	}{
-		{"testdata/test.go", nil},
-		{"testdata/util.go", errors.New("not exists Solver")},
-	}
-	for _, tt := range tests {
-		a := dummyAggregator(t, tt.name)
-		err := a.inejctMain()
-		if tt.expectErr == nil {
-			assert.NoError(t, err)
-		} else {
-			assert.Error(t, err, tt.expectErr)
-		}
-
-		// NOTE: debug
-		// var buf bytes.Buffer
-		// p := printer.Config{Mode: printer.TabIndent, Tabwidth: 4}
-		// p.Fprint(&buf, token.NewFileSet(), a.main.files)
 	}
 }
 
