@@ -57,7 +57,8 @@ func (c *CLI) Run(args []string) int {
 		return ExitCodeParseError
 	}
 
-	ret, err := aggregate.Aggregate(p.main, p.depends)
+	a := aggregate.New()
+	ret, err := a.Invoke(p.main, p.depends)
 	if err != nil {
 		c.printError("failed to aggregate process. %v\n", err)
 		return ExitCodeError

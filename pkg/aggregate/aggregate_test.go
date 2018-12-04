@@ -140,7 +140,7 @@ func TestAggregate(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		actual, err := Aggregate(tt.main, tt.deps)
+		actual, err := New().Invoke(tt.main, tt.deps)
 		assert.NoError(t, err)
 
 		printer.Fprint(os.Stdout, token.NewFileSet(), actual)

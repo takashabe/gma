@@ -33,16 +33,20 @@ var (
 	fset = token.NewFileSet()
 )
 
-// Aggregate aggregate main and sub files.
-func Aggregate(mainFile string, subFiles []string) (*ast.File, error) {
-	a := Aggregator{}
-	mp, err := a.parsePackage(mainFile)
+// New returns initialized Aggregator.
+func New() *Aggregator {
+	return &Aggregator{}
+}
+
+// Invoke aggregate main and depend files.
+func (a Aggregator) Invoke(main string, depends []string) (*ast.File, error) {
+	mp, err := a.parsePackage(main)
 	if err != nil {
 		return nil, err
 	}
 	a.main = mp
 
-	for _, dep := range subFiles {
+	for _, dep := range depends {
 		dp, err := a.parsePackage(dep)
 		if err != nil {
 			return nil, err
