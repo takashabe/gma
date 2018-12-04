@@ -27,13 +27,13 @@ func TestParsePackage(t *testing.T) {
 	}{
 		{"testdata/test.go", "main", nil},
 		{"testdata/util2/util2.go", "util2", nil},
-		{"foo", "solve", errors.New("not exists .go file foo")},
+		{"foo", "solve", ErrInvalidFile},
 	}
 	for _, tt := range tests {
 		a := &Aggregator{}
 		p, err := a.parsePackage(tt.name)
 		if err != nil {
-			assert.EqualError(t, err, tt.expectErr.Error())
+			assert.Equal(t, tt.expectErr, errors.Cause(err))
 			continue
 		}
 		assert.Equal(t, tt.expectPkgName, p.name)
@@ -78,7 +78,9 @@ func TestReplaceFuncs(t *testing.T) {
 			a.depends = append(a.depends, pkg)
 		}
 
-		n := a.replaceUtilFuncs()
+		n, err := replaceUtilFuncs(a.main, a.depends)
+		assert.NoError(t, err)
+
 		printer.Fprint(os.Stdout, token.NewFileSet(), n)
 	}
 }

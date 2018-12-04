@@ -54,10 +54,14 @@ func (a Aggregator) Invoke(main string, depends []string) (*ast.File, error) {
 		a.depends = append(a.depends, dp)
 	}
 
-	n := a.replaceUtilFuncs()
+	n, err := replaceUtilFuncs(a.main, a.depends)
+	if err != nil {
+		return nil, err
+	}
+
 	f, ok := n.(*ast.File)
 	if !ok {
-		return nil, errors.New("invalid depends files")
+		return nil, errors.Wrapf(ErrInvalidFile, f.Name.Name)
 	}
 	return f, nil
 }
@@ -75,7 +79,7 @@ func Fprint(w io.Writer, f *ast.File) error {
 
 func (a Aggregator) parsePackage(name string) (*Package, error) {
 	if !strings.HasSuffix(name, "go") {
-		return nil, errors.Errorf("not exists .go file %s", name)
+		return nil, errors.Wrapf(ErrInvalidFile, "%s", name)
 	}
 	af, err := parser.ParseFile(fset, name, nil, parser.ParseComments)
 	if err != nil {
@@ -165,13 +169,12 @@ func addDependPrefix(pkg *Package) (ast.Node, map[string]string) {
 	return pkg.file, replaceFuncs
 }
 
-// TODO: Rename function when import another util packages.
-func (a Aggregator) replaceUtilFuncs() ast.Node {
+func replaceUtilFuncs(main *Package, depends []*Package) (ast.Node, error) {
 	// collect util package and method list
 	replaceFuncs := make(map[string]string)
 	replacePkgs := []string{}
-	for _, p := range a.depends {
-		if a.main.name != p.name {
+	for _, p := range depends {
+		if main.name != p.name {
 			replacePkgs = append(replacePkgs, p.name)
 
 			_, fs := addDependPrefix(p)
@@ -181,13 +184,13 @@ func (a Aggregator) replaceUtilFuncs() ast.Node {
 		}
 	}
 
-	files := []*ast.File{a.main.file}
-	for _, df := range a.depends {
+	files := []*ast.File{main.file}
+	for _, df := range depends {
 		files = append(files, df.file)
 	}
 	mf, err := mergeFiles(files)
 	if err != nil {
-		panic("failed to mergeFiles")
+		return nil, err
 	}
 
 	replaceFuncNodes := make(map[string]*ast.FuncDecl)
@@ -248,5 +251,5 @@ func (a Aggregator) replaceUtilFuncs() ast.Node {
 	}
 
 	ret := astutil.Apply(mf, pre, nil)
-	return ret
+	return ret, nil
 }
