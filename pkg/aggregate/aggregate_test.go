@@ -2,20 +2,17 @@ package aggregate
 
 import (
 	"go/ast"
-	"go/printer"
-	"go/token"
-	"os"
 	"testing"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
 
-func dummyAggregator(t *testing.T, f string) *Aggregator {
+func dummyAggregator(t *testing.T, s string) *Aggregator {
 	a := &Aggregator{}
-	pkg, err := a.parsePackage(f)
+	f, err := a.parseFile(s)
 	assert.NoError(t, err)
-	a.main = pkg
+	a.main = f
 	return a
 }
 
@@ -31,7 +28,7 @@ func TestParsePackage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		a := &Aggregator{}
-		p, err := a.parsePackage(tt.name)
+		p, err := a.parseFile(tt.name)
 		if err != nil {
 			assert.Equal(t, tt.expectErr, errors.Cause(err))
 			continue
@@ -50,10 +47,12 @@ func TestAddDependPrefix(t *testing.T) {
 	}
 	for _, tt := range tests {
 		a := Aggregator{}
-		pkg, err := a.parsePackage(tt.depend)
+		f, err := a.parseFile(tt.depend)
 		assert.NoError(t, err)
 
-		addDependPrefix(pkg)
+		addDependPrefix(f)
+
+		// TODO: check node
 	}
 }
 
@@ -73,15 +72,15 @@ func TestReplaceFuncs(t *testing.T) {
 		a := dummyAggregator(t, tt.main)
 
 		for _, d := range tt.deps {
-			pkg, err := a.parsePackage(d)
+			pkg, err := a.parseFile(d)
 			assert.NoError(t, err)
 			a.depends = append(a.depends, pkg)
 		}
 
-		n, err := replaceUtilFuncs(a.main, a.depends)
+		_, err := renameDependPackage(a.main, a.depends)
 		assert.NoError(t, err)
 
-		printer.Fprint(os.Stdout, token.NewFileSet(), n)
+		// TODO: check return value
 	}
 }
 
@@ -103,10 +102,10 @@ func TestMergeFiles(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		pkgs := make([]*Package, 0, len(tt.files))
+		pkgs := make([]*File, 0, len(tt.files))
 		for _, f := range tt.files {
 			a := Aggregator{}
-			p, err := a.parsePackage(f)
+			p, err := a.parseFile(f)
 			assert.NoError(t, err)
 
 			pkgs = append(pkgs, p)
@@ -142,9 +141,9 @@ func TestAggregate(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		actual, err := New().Invoke(tt.main, tt.deps)
+		_, err := New().Invoke(tt.main, tt.deps)
 		assert.NoError(t, err)
 
-		printer.Fprint(os.Stdout, token.NewFileSet(), actual)
+		// TODO: check return value
 	}
 }

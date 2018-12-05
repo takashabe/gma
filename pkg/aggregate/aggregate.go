@@ -15,15 +15,15 @@ import (
 	"golang.org/x/tools/imports"
 )
 
-// Aggregator provides aggregate solver
+// Aggregator provides aggregate for main and depend file.
 type Aggregator struct {
-	main    *Package
-	depends []*Package
+	main    *File
+	depends []*File
 }
 
 // Package represent package and files
 // TODO: Package rename to `File`, and file field to `ast`
-type Package struct {
+type File struct {
 	file    *ast.File
 	name    string
 	imports []string
@@ -40,21 +40,21 @@ func New() *Aggregator {
 
 // Invoke aggregate main and depend files.
 func (a Aggregator) Invoke(main string, depends []string) (*ast.File, error) {
-	mp, err := a.parsePackage(main)
+	mp, err := a.parseFile(main)
 	if err != nil {
 		return nil, err
 	}
 	a.main = mp
 
 	for _, dep := range depends {
-		dp, err := a.parsePackage(dep)
+		dp, err := a.parseFile(dep)
 		if err != nil {
 			return nil, err
 		}
 		a.depends = append(a.depends, dp)
 	}
 
-	n, err := replaceUtilFuncs(a.main, a.depends)
+	n, err := renameDependPackage(a.main, a.depends)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func Fprint(w io.Writer, f *ast.File) error {
 	return nil
 }
 
-func (a Aggregator) parsePackage(name string) (*Package, error) {
+func (a Aggregator) parseFile(name string) (*File, error) {
 	if !strings.HasSuffix(name, "go") {
 		return nil, errors.Wrapf(ErrInvalidFile, "%s", name)
 	}
@@ -90,7 +90,7 @@ func (a Aggregator) parsePackage(name string) (*Package, error) {
 	for _, i := range af.Imports {
 		imports = append(imports, i.Path.Value)
 	}
-	return &Package{
+	return &File{
 		file:    af,
 		name:    af.Name.Name,
 		imports: imports,
@@ -141,14 +141,14 @@ func mergeFiles(files []*ast.File) (*ast.File, error) {
 	return parser.ParseFile(fset, "", a, parser.AllErrors)
 }
 
-func addDependPrefix(pkg *Package) (ast.Node, map[string]string) {
+func addDependPrefix(file *File) (ast.Node, map[string]string) {
 	replaceFuncs := make(map[string]string)
 
-	prefix := fmt.Sprintf("_%s", strings.ToLower(pkg.name))
-	ast.Inspect(pkg.file, func(n ast.Node) bool {
+	prefix := fmt.Sprintf("_%s", strings.ToLower(file.name))
+	ast.Inspect(file.file, func(n ast.Node) bool {
 		switch t := n.(type) {
 		case *ast.FuncDecl:
-			origin := fmt.Sprintf("%s.%s", pkg.name, t.Name.Name)
+			origin := fmt.Sprintf("%s.%s", file.name, t.Name.Name)
 			replaced := fmt.Sprintf("%s_%s", prefix, t.Name.Name)
 
 			replaceFuncs[origin] = replaced
@@ -158,7 +158,7 @@ func addDependPrefix(pkg *Package) (ast.Node, map[string]string) {
 			if !ok {
 				return true
 			}
-			origin := fmt.Sprintf("%s.%s", pkg.name, id.Name)
+			origin := fmt.Sprintf("%s.%s", file.name, id.Name)
 			replaced := fmt.Sprintf("%s_%s", prefix, id.Name)
 
 			replaceFuncs[replaced] = origin
@@ -166,11 +166,10 @@ func addDependPrefix(pkg *Package) (ast.Node, map[string]string) {
 		}
 		return true
 	})
-	return pkg.file, replaceFuncs
+	return file.file, replaceFuncs
 }
 
-func replaceUtilFuncs(main *Package, depends []*Package) (ast.Node, error) {
-	// collect util package and method list
+func renameDependPackage(main *File, depends []*File) (ast.Node, error) {
 	replaceFuncs := make(map[string]string)
 	replacePkgs := []string{}
 	for _, p := range depends {
