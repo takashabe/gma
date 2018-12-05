@@ -1,4 +1,4 @@
-package solve
+package main
 
 import "fmt"
 
