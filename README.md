@@ -4,7 +4,7 @@
 
 ## Usecase
 
-Most popular use cases is `competitive programming`. Some competitive programming system, require can only submit a soruce code include `main` func. But you can isolation the main and common util files via aggregate `gma`.
+Most popular use cases are `competitive programming.` Some competitive programming system, require can only submit a source code with include `main` function. You can isolate the main and common utility files via using `gma.`
 
 ## Usage
 
