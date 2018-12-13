@@ -1,8 +1,12 @@
 package main
 
-import "./util"
+import (
+	"fmt"
+
+	"github.com/takashabe/go-main-aggregator/example/util"
+)
 
 func main() {
-	util.Person(util.Name, 10)
-	foo()
+	fmt.Println(util.Foo())
+	Foo()
 }
