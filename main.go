@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
-	"github.com/takashabe/go-main-aggregator/pkg/aggregate"
+	"github.com/takashabe/gma/pkg/aggregate"
 )
 
 func main() {
