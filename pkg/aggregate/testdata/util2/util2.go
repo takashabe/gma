@@ -22,3 +22,5 @@ func bar() {
 func foo() {
 	fmt.Println("foo_string")
 }
+
+const Const = "go"

@@ -128,11 +128,15 @@ func mergeFiles(files []*ast.File) (*ast.File, error) {
 		Decls:   decls,
 	}
 
+	return restructureImport(file)
+}
+
+func restructureImport(n ast.Node) (*ast.File, error) {
 	var (
 		buf  = bytes.Buffer{}
 		fset = token.NewFileSet()
 	)
-	printer.Fprint(&buf, fset, file)
+	printer.Fprint(&buf, fset, n)
 	a, err := imports.Process("", buf.Bytes(), nil)
 	if err != nil {
 		return nil, err
@@ -250,5 +254,5 @@ func renameDependPackage(main *File, depends []*File) (ast.Node, error) {
 	}
 
 	ret := astutil.Apply(mf, pre, nil)
-	return ret, nil
+	return restructureImport(ret)
 }
