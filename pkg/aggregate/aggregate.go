@@ -109,7 +109,6 @@ func mergeFiles(files []*ast.File) (*ast.File, error) {
 	for _, file := range files {
 		for _, d := range file.Decls {
 			g, ok := d.(*ast.GenDecl)
-			// TODO: All import decls through for debug.
 			if ok && g.Tok == token.IMPORT {
 				continue
 			}
