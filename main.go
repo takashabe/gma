@@ -75,8 +75,8 @@ func (c *CLI) parseArgs(args []string, p *param) error {
 	flags := flag.NewFlagSet("param", flag.ContinueOnError)
 	flags.SetOutput(c.ErrStream)
 
-	flags.StringVar(&p.main, "main", "", "main file")
-	flags.Var(&p.depends, "depends", "depend files.")
+	flags.StringVar(&p.main, "main", "", "require: main file")
+	flags.Var(&p.depends, "depends", "optional: depend files")
 
 	err := flags.Parse(args)
 	if err != nil {
