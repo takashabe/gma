@@ -1,4 +1,4 @@
-module github.com/takashabe/go-main-aggregator
+module github.com/takashabe/gma
 
 require (
 	github.com/davecgh/go-spew v1.1.1
