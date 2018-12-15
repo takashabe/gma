@@ -40,7 +40,7 @@ package main
 import (
   "fmt"
 
-  "github.com/takashabe/go-main-aggregator/example/util"
+  "github.com/takashabe/gma/example/util"
 )
 
 func main() {
@@ -77,7 +77,7 @@ func Foo() string {
 execute `gma`:
 
 ```go
-$ gma -main main.go -depends util.go,util2.go -depends util/util.go
+$ gma -main example/main.go -depends example/util.go -depends example/util/util.go
 package main
 
 import (
