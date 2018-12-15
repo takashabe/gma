@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
+	fmt.Println(util.Name)
 	fmt.Println(util.Foo())
 	Foo()
 }
