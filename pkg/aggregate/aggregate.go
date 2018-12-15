@@ -22,7 +22,6 @@ type Aggregator struct {
 }
 
 // File represent package and files
-// TODO: Package rename to `File`, and file field to `ast`
 type File struct {
 	file    *ast.File
 	name    string
