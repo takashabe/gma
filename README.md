@@ -30,6 +30,8 @@ gma -main main.go -depends util.go,util2.go -depends util/util.go
 
 ### Example
 
+files to use:
+
 - main.go
 
 ```go
@@ -70,28 +72,25 @@ func Foo() string {
 }
 ```
 
---
+---
+
+execute `gma`:
 
 ```go
-$ gma -main main.go -depends util.go,util2.go -depends util/util.go > tmp
+$ gma -main main.go -depends util.go,util2.go -depends util/util.go
 package main
 
 import (
-        "fmt"
-        "github.com/takashabe/gma/example/util"
+  "fmt"
 )
 
 func main() {
-        fmt.Println(util.Name)
-        fmt.Println(_util_Foo())
-        Foo()
+  fmt.Println(_util_Foo())
+  Foo()
 }
 func Foo() {
 }
-
-const Name = "util.go"
-
 func _util_Foo() string {
-        return fmt.Sprintf("util")
+  return fmt.Sprintf("util")
 }
 ```
