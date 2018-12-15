@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/takashabe/go-main-aggregator/example/util"
+	"github.com/takashabe/gma/example/util"
 )
 
 func main() {
